@@ -1,0 +1,146 @@
+.landing-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f5f5dc 0%, #ffffff 100%);
+}
+
+.hero-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+}
+
+.logo-container {
+  text-align: center;
+  margin-bottom: 50px;
+}
+
+.logo {
+  width: 150px;
+  height: auto;
+  margin-bottom: 20px;
+}
+
+.site-title {
+  color: #8B4513;
+  font-size: 3rem;
+  margin: 10px 0;
+  font-family: 'Playfair Display', serif;
+}
+
+.tagline {
+  color: #666;
+  font-size: 1.2rem;
+  font-style: italic;
+}
+
+.user-selection {
+  text-align: center;
+  margin: 60px 0;
+}
+
+.user-selection h2 {
+  color: #8B4513;
+  font-size: 2rem;
+  margin-bottom: 40px;
+}
+
+.selection-cards {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.selection-card {
+  background: white;
+  border-radius: 15px;
+  padding: 40px 30px;
+  width: 300px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 30px rgba(139, 69, 19, 0.1);
+  border: 2px solid transparent;
+}
+
+.selection-card:hover {
+  transform: translateY(-10px);
+  border-color: #8B4513;
+  box-shadow: 0 20px 40px rgba(139, 69, 19, 0.2);
+}
+
+.card-icon {
+  font-size: 4rem;
+  margin-bottom: 20px;
+}
+
+.selection-card h3 {
+  color: #8B4513;
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+}
+
+.selection-card p {
+  color: #666;
+  line-height: 1.6;
+}
+
+.featured-products {
+  margin-top: 80px;
+}
+
+.featured-products h2 {
+  text-align: center;
+  color: #8B4513;
+  font-size: 2rem;
+  margin-bottom: 40px;
+}
+
+.product-previews {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+}
+
+.preview-item {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  width: 250px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.preview-item img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.preview-item p {
+  padding: 15px 15px 5px;
+  color: #333;
+  font-weight: 500;
+}
+
+.preview-item .price {
+  display: block;
+  padding: 0 15px 15px;
+  color: #8B4513;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 768px) {
+  .site-title {
+    font-size: 2rem;
+  }
+  
+  .selection-cards {
+    gap: 20px;
+  }
+  
+  .selection-card {
+    width: 100%;
+    max-width: 300px;
+  }
+}
