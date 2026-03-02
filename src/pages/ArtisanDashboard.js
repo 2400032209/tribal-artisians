@@ -1,47 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useProducts } from '../context/ProductContext';
+import Logo from '../components/Logo';
 import './ArtisanDashboard.css';
 
 const ArtisanDashboard = () => {
   const navigate = useNavigate();
+  const { products, updateProduct } = useProducts();
   const [activeTab, setActiveTab] = useState('products');
-  const [showAddProduct, setShowAddProduct] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [products, setProducts] = useState([
-    {
-      id: 1,
-      name: "Wooden Basket",
-      price: 899,
-      stock: 15,
-      orders: 23,
-      image: "/images/wooden-basket.png",
-      category: "Baskets",
-      description: "Traditional handwoven basket made from sustainable wood",
-      status: "active"
-    },
-    {
-      id: 2,
-      name: "Tribal Earrings Set",
-      price: 399,
-      stock: 50,
-      orders: 45,
-      image: "/images/tribal-earrings.png",
-      category: "Jewelry",
-      description: "Authentic tribal earrings with traditional designs",
-      status: "active"
-    },
-    {
-      id: 3,
-      name: "Bamboo Chair",
-      price: 2499,
-      stock: 8,
-      orders: 12,
-      image: "/images/bamboo-chair.png",
-      category: "Furniture",
-      description: "Handcrafted bamboo chair, eco-friendly and durable",
-      status: "active"
-    }
-  ]);
+  
+  // Filter products for this artisan (assuming artisanId = "artisan1" for demo)
+  const artisanProducts = products.filter(p => p.artisanId === 'artisan1' || !p.artisanId);
 
   const [orders] = useState([
     {
@@ -81,15 +51,23 @@ const ArtisanDashboard = () => {
   };
 
   const handleToggleProductStatus = (productId) => {
-    const updatedProducts = products.map(product => 
-      product.id === productId 
-        ? { ...product, status: product.status === 'active' ? 'inactive' : 'active' }
-        : product
-    );
-    setProducts(updatedProducts);
+    const product = artisanProducts.find(p => p.id === productId);
+    if (product) {
+      updateProduct(productId, { 
+        status: product.status === 'active' ? 'inactive' : 'active' 
+      });
+    }
   };
 
-  const filteredProducts = products.filter(product =>
+  const handleAddProduct = () => {
+    navigate('/add-product');
+  };
+
+  const handleEditProduct = (productId) => {
+    navigate(`/edit-product/${productId}`);
+  };
+
+  const filteredProducts = artisanProducts.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     product.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -105,14 +83,14 @@ const ArtisanDashboard = () => {
 
   const totalEarnings = orders.reduce((sum, order) => sum + order.total, 0);
   const totalOrders = orders.length;
-  const totalProducts = products.length;
-  const lowStockItems = products.filter(p => p.stock < 10).length;
+  const totalProducts = artisanProducts.length;
+  const lowStockItems = artisanProducts.filter(p => p.stock < 10).length;
 
   return (
     <div className="artisan-dashboard">
       <header className="artisan-header">
         <div className="header-left" onClick={() => navigate('/')}>
-          <img src="/images/logo.png" alt="Tribal Crafts Logo" className="header-logo" />
+          <Logo showText={false} />
           <h1>Artisan Dashboard</h1>
         </div>
         
@@ -193,55 +171,76 @@ const ArtisanDashboard = () => {
                   <span className="search-icon">🔍</span>
                 </div>
                 <button 
-                  className="add-product-btn"
-                  onClick={() => setShowAddProduct(true)}
-                >
-                  + Add New Product
-                </button>
+  className="add-product-btn"
+  onClick={() => navigate('/add-product')}
+>
+  + Add New Product
+</button>
               </div>
             </div>
 
-            <div className="products-grid">
-              {filteredProducts.map(product => (
-                <div key={product.id} className="product-card">
-                  <div className="product-image">
-                    <img src={product.image} alt={product.name} />
-                    <span className={`product-status-badge ${product.status}`}>
-                      {product.status}
-                    </span>
-                  </div>
-                  
-                  <div className="product-info">
-                    <h3>{product.name}</h3>
-                    <p className="product-category">{product.category}</p>
-                    <p className="product-price">₹{product.price}</p>
+            {artisanProducts.length === 0 ? (
+              <div className="no-products">
+                <p>You haven't added any products yet.</p>
+                <button onClick={handleAddProduct} className="add-first-product-btn">
+                  Add Your First Product
+                </button>
+              </div>
+            ) : (
+              <div className="products-grid">
+                {filteredProducts.map(product => (
+                  <div key={product.id} className="product-card">
+                    <div className="product-image">
+                      <img 
+                        src={product.image} 
+                        alt={product.name}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://via.placeholder.com/300x200/8B4513/ffffff?text=" + product.name;
+                        }}
+                      />
+                      <span className={`product-status-badge ${product.status}`}>
+                        {product.status}
+                      </span>
+                    </div>
                     
-                    <div className="product-stats">
-                      <div className="stat">
-                        <span className="stat-label">Stock:</span>
-                        <span className="product-stat-value">{product.stock}</span>
+                    <div className="product-info">
+                      <h3>{product.name}</h3>
+                      <p className="product-category">{product.category}</p>
+                      <p className="product-price">₹{product.price}</p>
+                      
+                      <div className="product-stats">
+                        <div className="stat">
+                          <span className="stat-label">Stock:</span>
+                          <span className="product-stat-value">{product.stock}</span>
+                        </div>
+                        <div className="stat">
+                          <span className="stat-label">Orders:</span>
+                          <span className="product-stat-value">{product.orders || 0}</span>
+                        </div>
                       </div>
-                      <div className="stat">
-                        <span className="stat-label">Orders:</span>
-                        <span className="product-stat-value">{product.orders}</span>
+
+                      <p className="product-description">{product.description}</p>
+
+                      <div className="product-actions">
+                        <button 
+                          className={`status-toggle ${product.status}`}
+                          onClick={() => handleToggleProductStatus(product.id)}
+                        >
+                          {product.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button 
+                          className="edit-btn"
+                          onClick={() => handleEditProduct(product.id)}
+                        >
+                          Edit
+                        </button>
                       </div>
-                    </div>
-
-                    <p className="product-description">{product.description}</p>
-
-                    <div className="product-actions">
-                      <button 
-                        className={`status-toggle ${product.status}`}
-                        onClick={() => handleToggleProductStatus(product.id)}
-                      >
-                        {product.status === 'active' ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button className="edit-btn">Edit</button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -300,6 +299,29 @@ const ArtisanDashboard = () => {
                     <div className="bar" style={{height: '80px'}}>Week 2</div>
                     <div className="bar" style={{height: '45px'}}>Week 3</div>
                     <div className="bar" style={{height: '70px'}}>Week 4</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="analytics-card">
+                <h3>Top Products</h3>
+                <div className="top-products">
+                  {artisanProducts.slice(0, 3).map(product => (
+                    <div key={product.id} className="top-product">
+                      <span>{product.name}</span>
+                      <span className="sales-count">{product.orders || 0} sold</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="analytics-card">
+                <h3>Category Distribution</h3>
+                <div className="pie-chart-placeholder">
+                  <div className="legend">
+                    <div><span className="color-box" style={{backgroundColor: '#8B4513'}}></span> Baskets</div>
+                    <div><span className="color-box" style={{backgroundColor: '#A0522D'}}></span> Jewelry</div>
+                    <div><span className="color-box" style={{backgroundColor: '#CD853F'}}></span> Furniture</div>
                   </div>
                 </div>
               </div>

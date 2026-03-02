@@ -167,23 +167,23 @@ const Checkout = () => {
     }
   };
 
-  // Format card number with spaces
-  const formatCardNumber = (value) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    
-    for (let i = 0; i < match.length; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return value;
-    }
-  };
+ // Format card number with spaces
+const formatCardNumber = (value) => {
+  const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+  const matches = v.match(/\d{4,16}/g);
+  const match = (matches && matches[0]) || '';
+  const parts = [];
+  
+  for (let i = 0; i < match.length; i += 4) {
+    parts.push(match.substring(i, i + 4));
+  }
+  
+  if (parts.length) {
+    return parts.join(' ');
+  } else {
+    return value;
+  }
+};
 
   // Handle card number input
   const handleCardNumberChange = (e) => {
@@ -276,7 +276,7 @@ const Checkout = () => {
       {/* Header */}
       <header className="checkout-header">
         <div className="header-left" onClick={() => navigate('/')}>
-          <img src="/images/tribal-logo.png" alt="Logo" className="header-logo" />
+          <img src="/images/logo.png" alt="Tribal Crafts Logo" className="header-logo" />
           <h1>Tribal Crafts</h1>
         </div>
       </header>

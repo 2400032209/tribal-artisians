@@ -4,6 +4,8 @@ import './LandingPage.css';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+
+  // ✅ FIX: Add missing state
   const [userType, setUserType] = useState('');
 
   const handleUserTypeSelect = (type) => {
