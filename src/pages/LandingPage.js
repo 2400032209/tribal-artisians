@@ -4,9 +4,7 @@ import './LandingPage.css';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-
-  // ✅ FIX: Add missing state
-  const [userType, setUserType] = useState('');
+  const [, setUserType] = useState(""); // ← Added this line!
 
   const handleUserTypeSelect = (type) => {
     setUserType(type);
@@ -50,17 +48,17 @@ const LandingPage = () => {
           <h2>Featured Products</h2>
           <div className="product-previews">
             <div className="preview-item">
-              <img src="/images/wooden-basket.jpg" alt="Wooden Basket" />
+              <img src="/images/wooden-basket.png" alt="Wooden Basket" />
               <p>Handwoven Wooden Basket</p>
               <span className="price">₹899</span>
             </div>
             <div className="preview-item">
-              <img src="/images/tribal-earrings.jpg" alt="Tribal Earrings" />
+              <img src="/images/tribal-earrings.png" alt="Tribal Earrings" />
               <p>Traditional Tribal Earrings</p>
               <span className="price">₹399</span>
             </div>
             <div className="preview-item">
-              <img src="/images/bamboo-chair.jpg" alt="Bamboo Chair" />
+              <img src="/images/bamboo-chair.png" alt="Bamboo Chair" />
               <p>Handcrafted Bamboo Chair</p>
               <span className="price">₹2,499</span>
             </div>

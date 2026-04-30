@@ -1,60 +1,153 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProducts } from '../context/ProductContext';
+import { getProducts } from '../services/api';
 import Logo from '../components/Logo';
 import './CustomerDashboard.css';
 
 const CustomerDashboard = () => {
   const navigate = useNavigate();
-  const { getActiveProducts } = useProducts();
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [products, setProducts] = useState([]);
 
-  // Load products from context
-  useEffect(() => {
-    setProducts(getActiveProducts());
-  }, [getActiveProducts]);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const customerId = user.id;
+  const CART_API = 'http://localhost:8080/api/cart';
+  const WISHLIST_API = 'http://localhost:8080/api/wishlist';
 
-  // Load cart and wishlist from localStorage
   useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem('cart') || '[]');
-    setCart(savedCart);
-    const savedWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-    setWishlist(savedWishlist);
+    const loadProducts = async () => {
+      try {
+        const data = await getProducts();
+
+        const mappedProducts = Array.isArray(data)
+          ? data.map((product) => ({
+              id: product.id,
+              name: product.name,
+              category: product.category || '',
+              artisan: product.artisan?.name || 'Tribal Artisan',
+              rating: product.rating || 4.5,
+              price: product.price,
+              image: product.imageUrl
+            }))
+          : [];
+
+        setProducts(mappedProducts);
+      } catch (error) {
+        console.error('Failed to load products:', error);
+        setProducts([]);
+      }
+    };
+
+    loadProducts();
   }, []);
+
+  const fetchCart = async () => {
+    try {
+      if (!customerId) {
+        setCart([]);
+        return;
+      }
+
+      const response = await fetch(`${CART_API}/${customerId}`);
+      if (!response.ok) throw new Error('Failed to fetch cart');
+
+      const data = await response.json();
+      setCart(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      setCart([]);
+    }
+  };
+
+  const fetchWishlist = async () => {
+    try {
+      if (!customerId) {
+        setWishlist([]);
+        return;
+      }
+
+      const response = await fetch(`${WISHLIST_API}/${customerId}`);
+      if (!response.ok) throw new Error('Failed to fetch wishlist');
+
+      const data = await response.json();
+      setWishlist(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching wishlist:', error);
+      setWishlist([]);
+    }
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchCart();
+    fetchWishlist();
+  }, [customerId]);
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase())
+    (product.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddToCart = (product) => {
-    const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItem = existingCart.find(item => item.id === product.id);
-    
-    if (existingItem) {
-      existingItem.quantity = (existingItem.quantity || 1) + 1;
-    } else {
-      existingCart.push({ ...product, quantity: 1 });
+  const handleAddToCart = async (product) => {
+    try {
+      if (!customerId) {
+        alert('Please login first');
+        return;
+      }
+
+      const response = await fetch(`${CART_API}/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: customerId,
+          productId: product.id,
+          quantity: 1
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add to cart');
+      }
+
+      await fetchCart();
+      alert(`${product.name} added to cart!`);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      alert('Failed to add to cart');
     }
-    
-    localStorage.setItem('cart', JSON.stringify(existingCart));
-    setCart(existingCart);
-    alert(`${product.name} added to cart!`);
   };
 
-  const handleAddToWishlist = (product) => {
-    const existingWishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-    
-    if (!existingWishlist.find(item => item.id === product.id)) {
-      existingWishlist.push(product);
-      localStorage.setItem('wishlist', JSON.stringify(existingWishlist));
-      setWishlist(existingWishlist);
+  const handleAddToWishlist = async (product) => {
+    try {
+      if (!customerId) {
+        alert('Please login first');
+        return;
+      }
+
+      const response = await fetch(`${WISHLIST_API}/add`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: customerId,
+          productId: product.id
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to add to wishlist');
+      }
+
+      await fetchWishlist();
       alert(`${product.name} added to wishlist!`);
-    } else {
-      alert('Product already in wishlist!');
+    } catch (error) {
+      console.error('Error adding to wishlist:', error);
+      alert('Failed to add to wishlist');
     }
   };
 

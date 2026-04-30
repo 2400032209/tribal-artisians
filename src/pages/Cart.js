@@ -6,36 +6,137 @@ const Cart = () => {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState([]);
 
-  // Load cart from localStorage when component mounts
+  const API_URL = 'http://localhost:8080/api/cart';
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const customerId = user.id;
+
   useEffect(() => {
-    const savedCart = JSON.parse(localStorage.getItem('cart') || '[]');
-    setCartItems(savedCart);
-  }, []);
+    const fetchCartItems = async () => {
+      try {
+        if (!customerId) {
+          setCartItems([]);
+          return;
+        }
 
-  // Update quantity
-  const updateQuantity = (itemId, change) => {
-    const updatedCart = cartItems.map(item => {
-      if (item.id === itemId) {
-        const newQuantity = Math.max(1, (item.quantity || 1) + change);
-        return { ...item, quantity: newQuantity };
+        const response = await fetch(`${API_URL}/${customerId}`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch cart: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const mappedItems = Array.isArray(data)
+          ? data.map((item) => ({
+              id: item.id, // cart item id
+              productId: item.product?.id, // actual product id
+              name: item.product?.name || 'Product',
+              image: item.product?.imageUrl || 'https://via.placeholder.com/120x120?text=Product',
+              artisan: item.product?.artisan?.name || 'Tribal Artisan',
+              price: item.product?.price || 0,
+              quantity: item.quantity || 1
+            }))
+          : [];
+
+        setCartItems(mappedItems);
+      } catch (error) {
+        console.error('Error fetching cart items:', error);
+        setCartItems([]);
       }
-      return item;
-    });
-    setCartItems(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    };
+
+    fetchCartItems();
+  }, [customerId]);
+
+  const refreshCartItems = async () => {
+    try {
+      if (!customerId) {
+        setCartItems([]);
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/${customerId}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch cart: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      const mappedItems = Array.isArray(data)
+        ? data.map((item) => ({
+            id: item.id, // cart item id
+            productId: item.product?.id, // actual product id
+            name: item.product?.name || 'Product',
+            image: item.product?.imageUrl || 'https://via.placeholder.com/120x120?text=Product',
+            artisan: item.product?.artisan?.name || 'Tribal Artisan',
+            price: item.product?.price || 0,
+            quantity: item.quantity || 1
+          }))
+        : [];
+
+      setCartItems(mappedItems);
+    } catch (error) {
+      console.error('Error fetching cart items:', error);
+      setCartItems([]);
+    }
   };
 
-  // Remove item from cart
-  const removeItem = (itemId) => {
-    const updatedCart = cartItems.filter(item => item.id !== itemId);
-    setCartItems(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
-    alert('Item removed from cart');
+  const updateQuantity = async (itemId, change) => {
+    try {
+      const item = cartItems.find((cartItem) => String(cartItem.id) === String(itemId));
+      if (!item) return;
+
+      let response;
+
+      if (change > 0) {
+        response = await fetch(`${API_URL}/${itemId}/increase`, {
+          method: 'PUT'
+        });
+      } else {
+        if ((item.quantity || 1) <= 1) {
+          return;
+        }
+
+        response = await fetch(`${API_URL}/${itemId}/decrease`, {
+          method: 'PUT'
+        });
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to update quantity: ${response.status}`);
+      }
+
+      await refreshCartItems();
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      alert('Failed to update quantity');
+    }
   };
 
-  // Calculate totals
+  const removeItem = async (itemId) => {
+    try {
+      const response = await fetch(`${API_URL}/${itemId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to remove item: ${response.status}`);
+      }
+
+      await refreshCartItems();
+      alert('Item removed from cart');
+    } catch (error) {
+      console.error('Error removing item:', error);
+      alert('Failed to remove item');
+    }
+  };
+
   const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
+    return cartItems.reduce(
+      (total, item) => total + (Number(item.price) * (item.quantity || 1)),
+      0
+    );
   };
 
   const calculateShipping = () => {
@@ -44,14 +145,13 @@ const Cart = () => {
   };
 
   const calculateTax = () => {
-    return calculateSubtotal() * 0.18; // 18% GST
+    return calculateSubtotal() * 0.18;
   };
 
   const calculateTotal = () => {
     return calculateSubtotal() + calculateShipping() + calculateTax();
   };
 
-  // Go to checkout
   const handleCheckout = () => {
     if (cartItems.length === 0) {
       alert('Your cart is empty!');
@@ -64,14 +164,14 @@ const Cart = () => {
     <div className="cart-page">
       <header className="cart-header">
         <div className="header-left" onClick={() => navigate('/')}>
-          <img src="/images/tribal-logo.png" alt="Logo" className="header-logo" />
+          <img src="/images/logo.png" alt="Tribal Crafts Logo" className="header-logo" />
           <h1>Tribal Crafts</h1>
         </div>
       </header>
 
       <div className="cart-container">
         <h1>Shopping Cart</h1>
-        
+
         {cartItems.length === 0 ? (
           <div className="empty-cart">
             <div className="empty-cart-icon">🛒</div>
@@ -84,10 +184,10 @@ const Cart = () => {
         ) : (
           <div className="cart-content">
             <div className="cart-items">
-              {cartItems.map(item => (
+              {cartItems.map((item) => (
                 <div key={item.id} className="cart-item">
                   <img src={item.image} alt={item.name} className="item-image" />
-                  
+
                   <div className="item-details">
                     <h3>{item.name}</h3>
                     <p className="item-artisan">by {item.artisan || 'Tribal Artisan'}</p>
@@ -101,7 +201,7 @@ const Cart = () => {
                   </div>
 
                   <div className="item-total">
-                    ₹{item.price * (item.quantity || 1)}
+                    ₹{(Number(item.price) * (item.quantity || 1)).toFixed(2)}
                   </div>
 
                   <div className="item-actions">
@@ -115,22 +215,22 @@ const Cart = () => {
 
             <div className="cart-summary">
               <h2>Order Summary</h2>
-              
+
               <div className="summary-row">
                 <span>Subtotal</span>
                 <span>₹{calculateSubtotal().toFixed(2)}</span>
               </div>
-              
+
               <div className="summary-row">
                 <span>Shipping</span>
                 <span>{calculateShipping() === 0 ? 'Free' : `₹${calculateShipping()}`}</span>
               </div>
-              
+
               <div className="summary-row">
                 <span>Tax (18% GST)</span>
                 <span>₹{calculateTax().toFixed(2)}</span>
               </div>
-              
+
               <div className="summary-row total">
                 <span>Total</span>
                 <span>₹{calculateTotal().toFixed(2)}</span>

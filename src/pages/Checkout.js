@@ -7,8 +7,8 @@ const Checkout = () => {
   const [cartItems, setCartItems] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [orderPlaced, setOrderPlaced] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('');
   const [formData, setFormData] = useState({
-    // Shipping Information
     fullName: '',
     address: '',
     city: '',
@@ -16,27 +16,62 @@ const Checkout = () => {
     pincode: '',
     phone: '',
     email: '',
-    
-    // Payment Information
     cardNumber: '',
     cardName: '',
     expiry: '',
     cvv: '',
     upiId: ''
   });
-  
+
   const [errors, setErrors] = useState({});
 
-  // Load cart from localStorage when component mounts
-  useEffect(() => {
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    if (cart.length === 0) {
-      navigate('/cart'); // Redirect to cart if empty
-    }
-    setCartItems(cart);
-  }, [navigate]);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const customerId = user.id;
+  const CART_API = 'http://localhost:8080/api/cart';
+  const ORDER_API = 'http://localhost:8080/api/orders';
 
-  // Calculate totals
+  useEffect(() => {
+    const fetchCartItems = async () => {
+      try {
+        if (!customerId) {
+          navigate('/cart');
+          return;
+        }
+
+        const response = await fetch(`${CART_API}/${customerId}`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch cart: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const mappedItems = Array.isArray(data)
+          ? data.map((item) => ({
+              id: item.id,
+              name: item.product?.name || 'Product',
+              image: item.product?.imageUrl || 'https://via.placeholder.com/120x120?text=Product',
+              artisan: item.product?.artisan?.name || 'Tribal Artisan',
+              price: item.product?.price || 0,
+              quantity: item.quantity || 1
+            }))
+          : [];
+
+        if (mappedItems.length === 0) {
+          navigate('/cart');
+          return;
+        }
+
+        setCartItems(mappedItems);
+      } catch (error) {
+        console.error('Error fetching cart items:', error);
+        navigate('/cart');
+      }
+    };
+
+    fetchCartItems();
+  }, [navigate, customerId]);
+
   const calculateSubtotal = () => {
     return cartItems.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
   };
@@ -47,18 +82,16 @@ const Checkout = () => {
   };
 
   const calculateTax = () => {
-    return calculateSubtotal() * 0.18; // 18% GST
+    return calculateSubtotal() * 0.18;
   };
 
   const calculateTotal = () => {
     return calculateSubtotal() + calculateShipping() + calculateTax();
   };
 
-  // Form validation
   const validateForm = () => {
     const newErrors = {};
 
-    // Shipping validation
     if (!formData.fullName.trim()) {
       newErrors.fullName = 'Full name is required';
     }
@@ -83,7 +116,6 @@ const Checkout = () => {
       newErrors.pincode = 'Pincode must be 6 digits';
     }
 
-    // Phone validation
     if (!formData.phone) {
       newErrors.phone = 'Phone number is required';
     } else if (!/^\d+$/.test(formData.phone)) {
@@ -92,14 +124,12 @@ const Checkout = () => {
       newErrors.phone = 'Phone number must be 10 digits';
     }
 
-    // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
-    // Payment validation based on method
     if (paymentMethod === 'card') {
       if (!formData.cardNumber) {
         newErrors.cardNumber = 'Card number is required';
@@ -117,17 +147,22 @@ const Checkout = () => {
         newErrors.expiry = 'Expiry date is required';
       } else if (!/^\d{2}\/\d{2}$/.test(formData.expiry)) {
         newErrors.expiry = 'Expiry must be in MM/YY format';
+
       } else {
         const [month, year] = formData.expiry.split('/');
         const currentYear = new Date().getFullYear() % 100;
         const currentMonth = new Date().getMonth() + 1;
-        
+
         if (parseInt(month) < 1 || parseInt(month) > 12) {
           newErrors.expiry = 'Invalid month';
-        } else if (parseInt(year) < currentYear || (parseInt(year) === currentYear && parseInt(month) < currentMonth)) {
+        } else if (
+          (parseInt(year) < currentYear) ||
+          (parseInt(year) === currentYear && parseInt(month) < currentMonth)
+        ) {
           newErrors.expiry = 'Card has expired';
         }
       }
+
 
       if (!formData.cvv) {
         newErrors.cvv = 'CVV is required';
@@ -150,15 +185,13 @@ const Checkout = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-    
-    // Clear error for this field
+
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -167,25 +200,19 @@ const Checkout = () => {
     }
   };
 
- // Format card number with spaces
-const formatCardNumber = (value) => {
-  const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-  const matches = v.match(/\d{4,16}/g);
-  const match = (matches && matches[0]) || '';
-  const parts = [];
-  
-  for (let i = 0; i < match.length; i += 4) {
-    parts.push(match.substring(i, i + 4));
-  }
-  
-  if (parts.length) {
-    return parts.join(' ');
-  } else {
-    return value;
-  }
-};
+  const formatCardNumber = (value) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = (matches && matches[0]) || '';
+    const parts = [];
 
-  // Handle card number input
+    for (let i = 0; i < match.length; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+
+    return parts.length ? parts.join(' ') : value;
+  };
+
   const handleCardNumberChange = (e) => {
     const formatted = formatCardNumber(e.target.value);
     setFormData(prev => ({
@@ -194,7 +221,6 @@ const formatCardNumber = (value) => {
     }));
   };
 
-  // Handle expiry input
   const handleExpiryChange = (e) => {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length >= 2) {
@@ -206,44 +232,55 @@ const formatCardNumber = (value) => {
     }));
   };
 
-  // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (validateForm()) {
-      // Process order
-      const orderDetails = {
-        orderId: 'ORD' + Math.floor(Math.random() * 1000000),
-        items: cartItems,
-        customer: {
-          name: formData.fullName,
-          email: formData.email,
-          phone: formData.phone,
-          address: `${formData.address}, ${formData.city}, ${formData.state} - ${formData.pincode}`
-        },
-        paymentMethod: paymentMethod,
+
+    if (!validateForm()) return;
+
+    try {
+      const payload = {
+        fullName: formData.fullName,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        pincode: formData.pincode,
+        phone: formData.phone,
+        email: formData.email,
         subtotal: calculateSubtotal(),
-        shipping: calculateShipping(),
         tax: calculateTax(),
         total: calculateTotal(),
-        date: new Date().toLocaleDateString('en-IN'),
-        status: 'confirmed'
+        status: 'PLACED'
       };
 
-      // Save order to localStorage (for demo)
-      const orders = JSON.parse(localStorage.getItem('orders') || '[]');
-      orders.push(orderDetails);
-      localStorage.setItem('orders', JSON.stringify(orders));
-      
-      // Clear cart
-      localStorage.removeItem('cart');
-      
-      // Show confirmation
+      const response = await fetch(`${ORDER_API}/checkout/${customerId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const text = await response.text();
+      let result;
+
+      try {
+        result = JSON.parse(text);
+      } catch {
+        result = text;
+      }
+
+      if (!response.ok) {
+        throw new Error(typeof result === 'string' ? result : 'Failed to place order');
+      }
+
+      setOrderNumber(result.id ? `ORD${result.id}` : `ORD${Math.floor(Math.random() * 1000000)}`);
       setOrderPlaced(true);
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert(error.message || 'Failed to place order');
     }
   };
 
-  // Order Confirmation View
   if (orderPlaced) {
     return (
       <div className="order-confirmation">
@@ -252,16 +289,16 @@ const formatCardNumber = (value) => {
           <h1>Order Confirmed!</h1>
           <p>Thank you for your purchase. Your order has been successfully placed.</p>
           <p className="order-number">
-            Order #: ORD{Math.floor(Math.random() * 1000000)}
+            Order #: {orderNumber}
           </p>
           <p className="confirmation-message">
             A confirmation email has been sent to <strong>{formData.email}</strong>
           </p>
           <p className="delivery-estimate">
-            Estimated Delivery: {new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString('en-IN')}
+            Estimated Delivery: {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN')}
           </p>
-          <button 
-            onClick={() => navigate('/customer')} 
+          <button
+            onClick={() => navigate('/customer')}
             className="continue-shopping"
           >
             Continue Shopping
@@ -273,7 +310,6 @@ const formatCardNumber = (value) => {
 
   return (
     <div className="checkout-page">
-      {/* Header */}
       <header className="checkout-header">
         <div className="header-left" onClick={() => navigate('/')}>
           <img src="/images/logo.png" alt="Tribal Crafts Logo" className="header-logo" />
@@ -283,14 +319,12 @@ const formatCardNumber = (value) => {
 
       <div className="checkout-container">
         <h1>Checkout</h1>
-        
+
         <div className="checkout-content">
-          {/* Checkout Form */}
           <form onSubmit={handleSubmit} className="checkout-form">
-            {/* Shipping Address Section */}
             <div className="form-section">
               <h2>Shipping Address</h2>
-              
+
               <div className="form-group">
                 <label>Full Name *</label>
                 <input
@@ -389,10 +423,9 @@ const formatCardNumber = (value) => {
               </div>
             </div>
 
-            {/* Payment Method Section */}
             <div className="form-section">
               <h2>Payment Method</h2>
-              
+
               <div className="payment-methods">
                 <label className={`payment-method ${paymentMethod === 'card' ? 'selected' : ''}`}>
                   <input
@@ -429,11 +462,10 @@ const formatCardNumber = (value) => {
               </div>
               {errors.payment && <span className="error-message">{errors.payment}</span>}
 
-              {/* Card Payment Details */}
               {paymentMethod === 'card' && (
                 <div className="payment-details card-details">
                   <h3>Card Details</h3>
-                  
+
                   <div className="form-group">
                     <label>Card Number *</label>
                     <input
@@ -493,11 +525,10 @@ const formatCardNumber = (value) => {
                 </div>
               )}
 
-              {/* UPI Payment Details */}
               {paymentMethod === 'upi' && (
                 <div className="payment-details upi-details">
                   <h3>UPI Details</h3>
-                  
+
                   <div className="form-group">
                     <label>UPI ID *</label>
                     <input
@@ -510,7 +541,7 @@ const formatCardNumber = (value) => {
                     />
                     {errors.upiId && <span className="error-message">{errors.upiId}</span>}
                   </div>
-                  
+
                   <div className="upi-apps">
                     <p>Pay with any UPI app:</p>
                     <div className="app-icons">
@@ -523,7 +554,6 @@ const formatCardNumber = (value) => {
                 </div>
               )}
 
-              {/* COD Notice */}
               {paymentMethod === 'cod' && (
                 <div className="payment-details cod-details">
                   <p>💵 Pay with cash when your order is delivered</p>
@@ -537,10 +567,9 @@ const formatCardNumber = (value) => {
             </button>
           </form>
 
-          {/* Order Summary */}
           <div className="order-summary">
             <h2>Your Order</h2>
-            
+
             <div className="order-items">
               {cartItems.map((item, index) => (
                 <div key={index} className="summary-item">
@@ -550,7 +579,7 @@ const formatCardNumber = (value) => {
                     <p className="item-artisan">by {item.artisan || 'Tribal Artisan'}</p>
                     <p className="item-quantity">Quantity: {item.quantity || 1}</p>
                   </div>
-                  <span className="item-price">₹{item.price * (item.quantity || 1)}</span>
+                  <span className="item-price">₹{(item.price * (item.quantity || 1)).toFixed(2)}</span>
                 </div>
               ))}
             </div>
@@ -572,12 +601,6 @@ const formatCardNumber = (value) => {
                 <span>Total</span>
                 <span>₹{calculateTotal().toFixed(2)}</span>
               </div>
-            </div>
-
-            {/* Secure Checkout Notice */}
-            <div className="secure-checkout">
-              <p>🔒 Secure Checkout</p>
-              <p className="secure-note">Your payment information is encrypted</p>
             </div>
           </div>
         </div>

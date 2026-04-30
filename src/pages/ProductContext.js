@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const ProductContext = createContext();
 
@@ -8,116 +8,163 @@ export const ProductProvider = ({ children }) => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load products from localStorage on initial load
-  useEffect(() => {
-    const savedProducts = JSON.parse(localStorage.getItem('products') || '[]');
-    if (savedProducts.length === 0) {
-      // Default products if none exist
-      const defaultProducts = [
-        {
-          id: 1,
-          name: "Wooden Basket",
-          price: 899,
-          rating: 4.5,
-          image: "/images/wooden-basket.png",
-          category: "Baskets",
-          description: "Traditional handwoven basket made from sustainable wood",
-          artisan: "Lakshmi's Crafts",
-          artisanId: "artisan1",
-          stock: 15,
-          status: "active",
-          orders: 23
-        },
-        {
-          id: 2,
-          name: "Tribal Earrings Set",
-          price: 399,
-          rating: 4.8,
-          image: "/images/tribal-earrings.png",
-          category: "Jewelry",
-          description: "Authentic tribal earrings with traditional designs",
-          artisan: "Tribal Heritage",
-          artisanId: "artisan2",
-          stock: 50,
-          status: "active",
-          orders: 45
-        },
-        {
-          id: 3,
-          name: "Bamboo Chair",
-          price: 2499,
-          rating: 4.7,
-          image: "/images/bamboo-chair.png",
-          category: "Furniture",
-          description: "Handcrafted bamboo chair, eco-friendly and durable",
-          artisan: "Green Crafts",
-          artisanId: "artisan1",
-          stock: 8,
-          status: "active",
-          orders: 12
-        }
-      ];
-      setProducts(defaultProducts);
-      localStorage.setItem('products', JSON.stringify(defaultProducts));
-    } else {
-      setProducts(savedProducts);
+  const API_URL = 'http://localhost:8080/api/products';
+
+  // GET all products
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(API_URL);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch products: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Ensure array always
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setProducts([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchProducts();
   }, []);
 
-  // Add a new product
-  const addProduct = (newProduct) => {
-    const product = {
-      ...newProduct,
-      id: products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1,
-      rating: 4.0,
-      orders: 0,
-      createdAt: new Date().toISOString(),
-      status: 'active'
-    };
-    
-    const updatedProducts = [...products, product];
-    setProducts(updatedProducts);
-    localStorage.setItem('products', JSON.stringify(updatedProducts));
-    return product;
+  // POST product
+  const addProduct = async (newProduct) => {
+    try {
+      const productToSend = {
+        name: newProduct.name || '',
+        category: newProduct.category || '',
+        price: Number(newProduct.price) || 0,
+        stock: Number(newProduct.stock) || 0,
+        description: newProduct.description || '',
+        image: newProduct.image || '',
+        status: newProduct.status || 'active',
+        orders: newProduct.orders || 0,
+        artisanId: newProduct.artisanId || 'artisan1'
+      };
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productToSend)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to add product: ${response.status}`);
+      }
+
+      const savedProduct = await response.json();
+
+      setProducts((prev) => [...prev, savedProduct]);
+      return savedProduct;
+    } catch (error) {
+      console.error('Error adding product:', error);
+      throw error;
+    }
   };
 
-  // Update an existing product
-  const updateProduct = (productId, updatedData) => {
-    const updatedProducts = products.map(p => 
-      p.id === productId ? { ...p, ...updatedData } : p
-    );
-    setProducts(updatedProducts);
-    localStorage.setItem('products', JSON.stringify(updatedProducts));
+  // PATCH product
+  const updateProduct = async (id, updatedFields) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedFields)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update product: ${response.status}`);
+      }
+
+      const updatedProduct = await response.json();
+
+      setProducts((prev) =>
+        prev.map((product) =>
+          String(product.id) === String(id) ? updatedProduct : product
+        )
+      );
+
+      return updatedProduct;
+    } catch (error) {
+      console.error('Error updating product:', error);
+      throw error;
+    }
   };
 
-  // Delete a product
-  const deleteProduct = (productId) => {
-    const updatedProducts = products.filter(p => p.id !== productId);
-    setProducts(updatedProducts);
-    localStorage.setItem('products', JSON.stringify(updatedProducts));
+  // PUT full update if needed
+  const replaceProduct = async (id, productData) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productData)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to replace product: ${response.status}`);
+      }
+
+      const updatedProduct = await response.json();
+
+      setProducts((prev) =>
+        prev.map((product) =>
+          String(product.id) === String(id) ? updatedProduct : product
+        )
+      );
+
+      return updatedProduct;
+    } catch (error) {
+      console.error('Error replacing product:', error);
+      throw error;
+    }
   };
 
-  // Get active products only (for customer view)
-  const getActiveProducts = () => {
-    return products.filter(p => p.status === 'active');
-  };
+  // DELETE product
+  const deleteProduct = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE'
+      });
 
-  // Get product by ID
-  const getProductById = (productId) => {
-    return products.find(p => p.id === parseInt(productId));
+      if (!response.ok) {
+        throw new Error(`Failed to delete product: ${response.status}`);
+      }
+
+      setProducts((prev) =>
+        prev.filter((product) => String(product.id) !== String(id))
+      );
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      throw error;
+    }
   };
 
   return (
-    <ProductContext.Provider value={{
-      products,
-      loading,
-      addProduct,
-      updateProduct,
-      deleteProduct,
-      getActiveProducts,
-      getProductById
-    }}>
+    <ProductContext.Provider
+      value={{
+        products,
+        loading,
+        fetchProducts,
+        addProduct,
+        updateProduct,
+        replaceProduct,
+        deleteProduct
+      }}
+    >
       {children}
     </ProductContext.Provider>
   );

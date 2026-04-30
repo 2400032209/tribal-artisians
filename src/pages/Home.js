@@ -1,44 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getProducts } from '../services/api';
 import './Home.css';
 
 const Home = () => {
   const navigate = useNavigate();
+  const [featuredProducts, setFeaturedProducts] = useState([]);
 
-  const featuredProducts = [
-    {
-      id: 1,
-      name: "Handwoven Wooden Basket",
-      price: 899,
-      rating: 4.5,
-      image: "https://images.unsplash.com/photo-1592078615290-033ee584e267?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      artisan: "Lakshmi's Crafts"
-    },
-    {
-      id: 2,
-      name: "Tribal Earrings Set",
-      price: 399,
-      rating: 4.8,
-      image: "https://images.unsplash.com/photo-1630019852942-f89202989c59?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      artisan: "Tribal Heritage"
-    },
-    {
-      id: 3,
-      name: "Bamboo Chair",
-      price: 2499,
-      rating: 4.7,
-      image: "https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      artisan: "Green Crafts"
-    },
-    {
-      id: 4,
-      name: "Handmade Cotton Towel",
-      price: 299,
-      rating: 4.3,
-      image: "https://images.unsplash.com/photo-1583848925546-3c8c9df2b9b5?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      artisan: "Weavers of India"
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    try {
+      const data = await getProducts();
+
+      const mappedProducts = data.map((product) => ({
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        rating: 4.5,
+        image: product.imageUrl,
+        artisan: product.artisan?.name || 'Tribal Artisan'
+      }));
+
+      setFeaturedProducts(mappedProducts);
+    } catch (error) {
+      console.error('Failed to load products:', error);
     }
-  ];
+  };
 
   const categories = [
     { name: "Baskets", icon: "🧺", count: 45 },
@@ -87,7 +77,7 @@ const Home = () => {
             <button className="btn-primary" onClick={() => navigate('/customer')}>
               Shop Now
             </button>
-            <button className="btn-secondary" onClick={() => navigate('/login', { state: { userType: 'seller' } })}>
+            <button className="btn-secondary" onClick={() => navigate('/login', { state: { userType: 'artisan' } })}>
               Become an Artisan
             </button>
           </div>
@@ -118,7 +108,14 @@ const Home = () => {
           {featuredProducts.map(product => (
             <div key={product.id} className="product-card" onClick={() => navigate(`/product/${product.id}`)}>
               <div className="product-image">
-                <img src={product.image} alt={product.name} />
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = "https://via.placeholder.com/300x200/8B4513/ffffff?text=" + encodeURIComponent(product.name);
+                  }}
+                />
                 <div className="product-overlay">
                   <button className="quick-view">Quick View</button>
                 </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { loginUser, registerUser } from '../services/api';
 import './Login.css';
 
 const Login = () => {
@@ -21,21 +22,18 @@ const Login = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Email validation
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
     }
 
-    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 4) {
+      newErrors.password = 'Password must be at least 4 characters';
     }
 
-    // Confirm password for signup
     if (!isLogin) {
       if (!formData.confirmPassword) {
         newErrors.confirmPassword = 'Please confirm your password';
@@ -43,7 +41,6 @@ const Login = () => {
         newErrors.confirmPassword = 'Passwords do not match';
       }
 
-      // Phone validation
       if (!formData.phone) {
         newErrors.phone = 'Phone number is required';
       } else if (!/^\d+$/.test(formData.phone)) {
@@ -52,7 +49,6 @@ const Login = () => {
         newErrors.phone = 'Phone number must be 10 digits';
       }
 
-      // Name validation
       if (!formData.name) {
         newErrors.name = 'Name is required';
       }
@@ -68,7 +64,6 @@ const Login = () => {
       ...prev,
       [name]: value
     }));
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -77,18 +72,56 @@ const Login = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (validateForm()) {
-      // Here you would typically make an API call
-      console.log('Form submitted:', formData);
-      
-      // Navigate based on user type
-      if (userType === 'customer') {
-        navigate('/customer');
+      if (isLogin) {
+        try {
+          const role = userType === 'customer' ? 'CUSTOMER' : 'ARTISAN';
+
+          const user = await loginUser({
+            email: formData.email,
+            password: formData.password,
+            role: role
+          });
+
+          localStorage.setItem('user', JSON.stringify(user));
+
+          if (userType === 'customer') {
+            navigate('/customer');
+          } else {
+            navigate('/artisan');
+          }
+        } catch (error) {
+          alert(error.message || 'Invalid email, password, or role');
+        }
       } else {
-        navigate('/artisan');
+        try {
+          const role = userType === 'customer' ? 'CUSTOMER' : 'ARTISAN';
+
+          await registerUser({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            phone: formData.phone,
+            address: formData.address,
+            role: role
+          });
+
+          alert('Signup successful! Please login now.');
+          setIsLogin(true);
+          setFormData({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            name: '',
+            phone: '',
+            address: ''
+          });
+        } catch (error) {
+          alert(error.message || 'Signup failed');
+        }
       }
     }
   };
@@ -202,4 +235,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Login; 
