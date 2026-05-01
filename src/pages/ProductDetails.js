@@ -12,9 +12,9 @@ const ProductDetails = () => {
   const [reviews, setReviews] = useState([]);
   const [newReview, setNewReview] = useState({ rating: 5, comment: '' });
 
-  useEffect(() => {
-    loadProduct();
-  }, [id]);
+ useEffect(() => {
+  loadProduct();
+}, [loadProduct]);
 
   const loadProduct = async () => {
     try {
