@@ -80,10 +80,10 @@ const CustomerDashboard = () => {
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    fetchCart();
-    fetchWishlist();
-  }, [customerId]);
+ useEffect(() => {
+  fetchCart();
+  fetchWishlist();
+}, [fetchCart, fetchWishlist]);
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
